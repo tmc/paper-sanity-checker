@@ -18,7 +18,8 @@ experiment — do not skip steps 2–4.
 
 ## Inputs
 
-- An arXiv id (`<arxiv-id>`) or URL (`https://arxiv.org/abs/<arxiv-id>`).
+- An arXiv id (`<arxiv-id>`, e.g. of the form `YYMM.NNNNN`) or URL
+  (`https://arxiv.org/abs/<arxiv-id>`).
   Strip any `vN` version suffix.
 - If the user hasn't provided one, ask before starting any work.
 
