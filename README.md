@@ -44,8 +44,9 @@ skills/paper-sanity-checker/
 
 - `arxiv`    (https://github.com/tmc/arxiv)         — paper fetch + pack
 - `nlm`      (https://github.com/tmc/nlm)           — NotebookLM CLI; run `nlm auth` first
-- `html2md`  (https://github.com/tmc/misc/html2md)  — companion-website mirroring
-- `git`, `curl`                                     — repo cloning + raw fetch
+- `churl`    (https://github.com/tmc/cdp/cmd/churl) — Chrome-rendered fetch + recursive mirror for SPA companion sites
+- `html2md`  (https://github.com/tmc/misc/html2md)  — HTML → markdown for NotebookLM ingestion
+- `git`, `curl`                                     — repo cloning + raw fetch fallback
 
 ## Use
 

@@ -2,7 +2,7 @@
 name: paper-sanity-checker
 description: "Sanity-check an arXiv paper against its own released evidence by mirroring the paper, its companion code repos, its companion websites, and (optionally) its cited papers into a NotebookLM notebook, priming it as a vigorous reviewer, and running a battery of probes that must cite specific source lines for every finding. Targets paper/code drift, undocumented methodological choices, dataset issues, and reporting selection — i.e. the failure modes that surface when a paper is not independently reviewed."
 when_to_use: "User wants to sanity-check, audit, pressure-test, or find issues in an arXiv paper. Triggers on phrases like 'sanity check this paper', 'is this paper correct', 'find issues in', 'pressure test', 'fact check', or when the user supplies an arXiv id/URL with critical intent. Do NOT use for plain summarization — use the nlm skill directly for that."
-allowed-tools: Bash(arxiv:*), Bash(nlm:*), Bash(git clone:*), Bash(git rev-parse:*), Bash(curl:*), Bash(html2md:*), Bash(grep:*), Bash(sed:*), Bash(awk:*), Bash(sort:*), Bash(find:*), Bash(ls:*), Bash(mkdir:*), Bash(cat:*), Bash(rm:*), Read, Write, Edit, Glob, Grep
+allowed-tools: Bash(arxiv:*), Bash(nlm:*), Bash(git clone:*), Bash(git rev-parse:*), Bash(curl:*), Bash(churl:*), Bash(html2md:*), Bash(grep:*), Bash(sed:*), Bash(awk:*), Bash(sort:*), Bash(find:*), Bash(ls:*), Bash(mkdir:*), Bash(cat:*), Bash(rm:*), Bash(wc:*), Bash(xargs:*), Read, Write, Edit, Glob, Grep
 ---
 
 # paper-sanity-checker — sanity-check a paper against its own evidence
@@ -22,8 +22,10 @@ experiment — do not skip steps 2–4.
   Strip any `vN` version suffix.
 - If the user hasn't provided one, ask before starting any work.
 
-The skill assumes `arxiv`, `nlm`, `git`, `curl`, and `html2md` are on
-`$PATH`. Tool-specific concerns (auth state, quotas, retry behavior) belong
+The skill assumes `arxiv`, `nlm`, `git`, `curl`, `churl`, and `html2md`
+are on `$PATH`. (`churl` is required for SPA companion sites; without it
+the skill falls back to a degraded single-page `curl | html2md` and flags
+the gap.) Tool-specific concerns (auth state, quotas, retry behavior) belong
 to those tools' own skills — surface failures to the user and let those
 skills handle the recovery.
 
@@ -141,29 +143,57 @@ if [[ ! -d "$dest" ]]; then
 fi
 ```
 
-**web** — fetch + html2md, with SPA-shell detection:
+**web** — mirror the companion site with `churl`
+(https://github.com/tmc/cdp/cmd/churl), a Chrome-DevTools-Protocol-driven
+fetcher that returns post-render HTML and supports recursive site mirroring
+(wget-style: `-m`, `-l`, `-np`, scope filters). Companion sites are commonly
+Vite/React/Next SPAs whose useful content only appears after JS execution
+— plain `curl` would get a 1–2KB shell.
+
+Mirror each opted-in companion site as a self-contained tree, scoped to the
+companion's own host and any path prefix it lives under, then convert each
+HTML file to markdown for NotebookLM ingestion:
+
 ```bash
 hostpath=$(echo "$url" | sed -E 's#^https?://##; s#[?#].*$##; s#/$##')
-dest="$WORK/mirror/web/$hostpath.md"
-mkdir -p "$(dirname "$dest")"
-curl -fsSL --max-time 30 "$url" 2>/dev/null | html2md > "$dest" \
-  || { rm -f "$dest"; echo "FAILED fetch: $url" >> "$WORK/mirror/errors.log"; }
-# JS-rendered SPAs hand back a 1-2KB shell that html2md reduces to just the
-# <title>. A bare `test -s` lets these slip through (e.g. 40 bytes is
-# "non-empty" but useless). Treat anything under 256 bytes as suspicious;
-# also treat "title only, no body prose" as suspicious.
-if [[ -s "$dest" ]]; then
-  size=$(wc -c < "$dest" | tr -d ' ')
-  body_lines=$(grep -cE '[[:alpha:]]{20,}' "$dest" || true)
-  if (( size < 256 )) || (( body_lines < 2 )); then
-    echo "SUSPICIOUS web mirror (likely JS-SPA shell, size=${size}B body_lines=${body_lines}): $url" >> "$WORK/mirror/errors.log"
-    # Keep the file — title alone is sometimes useful — but flag it loudly.
-  fi
+host=${hostpath%%/*}
+sitedir="$WORK/mirror/web/$hostpath"
+mkdir -p "$sitedir"
+
+# churl mirror: same host only, no parent, depth 3 (entry + ~2 levels
+# of links), accept html only, follow redirects. -P writes the tree
+# directly to disk in wget-style layout.
+if ! churl -m -l 3 -np -D "$host" -A html,htm -P "$sitedir" "$url" \
+       2> "$sitedir/.churl.log"; then
+  echo "FAILED churl mirror: $url (see $sitedir/.churl.log)" \
+    >> "$WORK/mirror/errors.log"
+fi
+
+# Convert every fetched HTML page to markdown alongside it. NotebookLM
+# indexes prose, so we want one .md per .html — skip assets churl may
+# have grabbed.
+while IFS= read -r f; do
+  out="${f%.*}.md"
+  html2md < "$f" > "$out" 2>/dev/null || rm -f "$out"
+done < <(find "$sitedir" -type f \( -name '*.html' -o -name '*.htm' \))
+
+# Sanity-check: did we get prose or just shells? Count the sum of
+# markdown body bytes — if it's negligible, churl probably didn't render.
+total=$(find "$sitedir" -type f -name '*.md' -exec cat {} + 2>/dev/null | wc -c | tr -d ' ')
+if (( total < 1024 )); then
+  echo "SUSPICIOUS web mirror (post-churl, total prose ${total}B): $url" \
+    >> "$WORK/mirror/errors.log"
 fi
 ```
 
-When a web mirror is flagged SUSPICIOUS, *also* check whether the same
-content might be available inside one of the mirrored repos (companion sites
+If `churl` isn't on `$PATH`, fall back to a single-page `curl | html2md`
+into `$sitedir/index.md`, record a gap in `errors.log`, and tell the user
+to `go install github.com/tmc/cdp/cmd/churl@latest` before re-running for
+proper companion-site coverage.
+
+When a web mirror still looks empty after `churl`, *also* check whether the
+same content might be available inside one of the mirrored repos (companion
+sites
 are often Vite/React apps with the prose in a `website/` or `docs/`
 directory). If so, recommend the user drop the web mirror — the repo source
 is strictly better.
