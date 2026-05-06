@@ -144,60 +144,57 @@ if [[ ! -d "$dest" ]]; then
 fi
 ```
 
-**web** — mirror the companion site with `churl`
+**web** — fetch the companion site with `churl`
 (https://github.com/tmc/cdp/cmd/churl), a Chrome-DevTools-Protocol-driven
-fetcher that returns post-render HTML and supports recursive site mirroring
-(wget-style: `-m`, `-l`, `-np`, scope filters). Companion sites are commonly
-Vite/React/Next SPAs whose useful content only appears after JS execution
-— plain `curl` would get a 1–2KB shell.
+fetcher that returns post-render HTML. Companion sites are commonly
+Vite/React/Next SPAs whose useful content only appears after JS execution;
+plain `curl` would get a 1–2KB shell.
 
-Mirror each opted-in companion site as a self-contained tree, scoped to the
-companion's own host and any path prefix it lives under, then convert each
-HTML file to markdown for NotebookLM ingestion:
+`churl` is a **single-page renderer** — recursive/mirror flags
+(`-m`, `-r`, `-l`, `-P`) are unimplemented and rejected. For companion
+sites with multiple routes, only the entry URL is fetched. In practice
+most paper companion sites are single-route SPAs with all data inlined,
+so this is sufficient; if a site has per-section URLs the user cares
+about, add each as its own opted-in URL during phase 2.
 
 ```bash
 hostpath=$(echo "$url" | sed -E 's#^https?://##; s#[?#].*$##; s#/$##')
-host=${hostpath%%/*}
 sitedir="$WORK/mirror/web/$hostpath"
 mkdir -p "$sitedir"
+html="$sitedir/index.html"
+md="$sitedir/index.md"
 
-# churl mirror: same host only, no parent, depth 3 (entry + ~2 levels
-# of links), accept html only, follow redirects. -P writes the tree
-# directly to disk in wget-style layout.
-if ! churl -m -l 3 -np -D "$host" -A html,htm -P "$sitedir" "$url" \
-       2> "$sitedir/.churl.log"; then
-  echo "FAILED churl mirror: $url (see $sitedir/.churl.log)" \
+if ! churl -o "$html" "$url" 2> "$sitedir/.churl.log"; then
+  echo "FAILED churl: $url (see $sitedir/.churl.log)" \
     >> "$WORK/mirror/errors.log"
 fi
 
-# Convert every fetched HTML page to markdown alongside it. NotebookLM
-# indexes prose, so we want one .md per .html — skip assets churl may
-# have grabbed.
-while IFS= read -r f; do
-  out="${f%.*}.md"
-  html2md < "$f" > "$out" 2>/dev/null || rm -f "$out"
-done < <(find "$sitedir" -type f \( -name '*.html' -o -name '*.htm' \))
+if [[ -s "$html" ]]; then
+  html2md < "$html" > "$md" 2>/dev/null || rm -f "$md"
+fi
 
-# Sanity-check: did we get prose or just shells? Count the sum of
-# markdown body bytes — if it's negligible, churl probably didn't render.
-total=$(find "$sitedir" -type f -name '*.md' -exec cat {} + 2>/dev/null | wc -c | tr -d ' ')
-if (( total < 1024 )); then
-  echo "SUSPICIOUS web mirror (post-churl, total prose ${total}B): $url" \
-    >> "$WORK/mirror/errors.log"
+# Sanity-check: did we get real prose or an SPA shell churl couldn't
+# render?  Treat <256 bytes or fewer than 2 long-text lines as suspect.
+if [[ -s "$md" ]]; then
+  size=$(wc -c < "$md" | tr -d ' ')
+  body_lines=$(grep -cE '[[:alpha:]]{20,}' "$md" || true)
+  if (( size < 256 )) || (( body_lines < 2 )); then
+    echo "SUSPICIOUS web mirror (size=${size}B body_lines=${body_lines}): $url" \
+      >> "$WORK/mirror/errors.log"
+  fi
 fi
 ```
 
-If `churl` isn't on `$PATH`, fall back to a single-page `curl | html2md`
-into `$sitedir/index.md`, record a gap in `errors.log`, and tell the user
-to `go install github.com/tmc/cdp/cmd/churl@latest` before re-running for
-proper companion-site coverage.
+If `churl` isn't on `$PATH`, fall back to `curl -fsSL --max-time 30 "$url" | html2md`,
+record a gap in `errors.log`, and tell the user to
+`go install github.com/tmc/cdp/cmd/churl@latest` before re-running — the
+plain-curl fallback misses any JS-rendered content.
 
-When a web mirror still looks empty after `churl`, *also* check whether the
-same content might be available inside one of the mirrored repos (companion
-sites
-are often Vite/React apps with the prose in a `website/` or `docs/`
-directory). If so, recommend the user drop the web mirror — the repo source
-is strictly better.
+When a web mirror still looks empty, *also* check whether the same content
+might be available inside one of the mirrored repos (companion sites are
+often Vite/React apps with the prose in a `website/` or `docs/` directory).
+If so, recommend the user drop the web mirror — the repo source is strictly
+better.
 
 **arxiv** (cited papers, if user opted in):
 ```bash
