@@ -10,20 +10,17 @@ input — a benchmark it introduces, an eval set it uses, a curated corpus,
 human annotations, gold labels, etc. Skip if the paper has no such artifact
 (e.g. pure theory papers).
 
-**Independence guardrail.** The authors' own audits, self-reported
-flagged-probe lists, and "we removed bad examples" sections are the
-*subject* of this probe, not its evidence. Do not rely on them. Draw your
-own sample (favoring the hardest, rarest, most-likely-ambiguous slice) and
-report what *you* find when you check the labels against authoritative
-sources. If the only evidence you can quote is "the authors say they
-audited this," the verdict is OUT OF SCOPE — not "verified."
+**Independence note.** The authors' own audits, self-reported flagged-probe
+lists, and "we removed bad examples" sections are the *subject* of this
+probe, not its evidence. Prefer your own sample over their summary. If the
+only evidence you can quote is "the authors say they audited this," the
+verdict is OUT OF SCOPE — not "verified."
 
-When verification requires capabilities you don't have in this notebook
-(re-querying Wikidata / OpenAlex / Wikipedia for entity-collision counts,
-running an LLM judge against a held-out sample, reproducing an annotation
-pipeline), say so explicitly: list the specific verification step as TODO
-(needs <web | live API | execution>). Do not silently substitute the
-authors' audit as a stand-in for that check.
+When checking labels requires capabilities you don't have in this notebook
+(re-querying an external knowledge base, running an LLM judge against a
+held-out sample, reproducing an annotation pipeline), say so explicitly:
+list the specific check as TODO (needs <web | live API | execution>). Do
+not silently substitute the authors' audit as a stand-in for that check.
 
 For the dataset in question:
 
@@ -35,13 +32,13 @@ For the dataset in question:
    doesn't it? Are some buckets (difficulty, topic, language, time, source
    type) much more represented than others? If the paper claims
    generality, does the dataset support that claim?
-3. **Label correctness.** Sample 10–30 entries from the dataset and
-   verify the label against an authoritative source where one exists in
+3. **Label correctness.** Sample 10–30 entries from the dataset and check
+   the label against an authoritative source where one is available in
    the corpus (paper citations, repo metadata, named external sources).
    Report the rate of suspect labels and quote a few examples.
 
-   Draw the sample from at least two different slices — labeling errors
-   cluster differently in each:
+   Sample from at least two different slices — labeling errors cluster
+   differently in each:
    - The hardest / rarest / most-likely-ambiguous slice. Errors at the
      tail compound with the difficulty signal.
    - The slice where evaluated systems *underperformed relative to
