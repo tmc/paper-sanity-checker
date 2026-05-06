@@ -60,34 +60,47 @@ then stay in that lens. The line should be terse, e.g.:
 Useful lenses (pick the one whose questions match the probe; combine when
 genuinely needed, but only one is usually best):
 
-- **Empirical replicator.** Would I get the same number running this on my
-  own machine, with my own API keys, today? What in the pipeline depends on
-  state I don't have? What silently degrades if I'm rate-limited?
 - **Adversarial discoverer.** If I were a careless author, where would I
   hide a problem so reviewers wouldn't notice? Default-suspicious of
   scoring code, aggregation pipelines, anything labeled "minor processing,"
   and any claim of the form "we do not X."
-- **Statistical reviewer.** Where is the dispersion? When the paper reports
-  one number, where's the distribution it came from? Are confidence
-  intervals consistent with the claim's strength? Are sample sizes adequate
-  for the precision being claimed?
-- **Prior-art reviewer.** When the paper cites another work, does that
-  work say what it's being cited for? Is "extends X" really an extension or
-  a repackaging? Is "falsifies Y" really a falsification or a different
-  question being asked?
 - **Implementer.** Could a competent reader rebuild this from the methods
   section plus the repo alone? Where does the methods section stop and
   tribal knowledge start? What's in the code that isn't in the prose, and
   vice versa?
-- **Skeptical funder.** Would I bet money on the headline number? If the
-  result is too good to be true, what's the cheapest way to break it? What
-  sensitivity test would the authors have run if they'd genuinely doubted
-  the result?
+- **Empirical replicator.** Would I get the same number running this on my
+  own machine, with my own API keys, today? What in the pipeline depends on
+  state I don't have? What silently degrades if I'm rate-limited?
 
 If none of these fit, name your own lens in one line — but the lens must be
 about *what kind of error you're hunting for*, not *who you're pretending
 to be*. "I am Russ Cox" is not a lens. "Implementer who's about to copy
 this code into production" is.
+
+**Then name your blind spots.** In one line after declaring the lens, say
+what you cannot verify from the notebook alone (no live web, no API
+access, no execution, no live database). That constraint shapes which
+findings you should hunt for in the notebook vs. which you should mark
+TODO. Example:
+
+> Blind spots: no live web, so I can't re-query Wikidata for collisions
+> — leaning on the repo's own collision logs as evidence instead.
+
+## Open with asset-class enumeration on cross-source probes
+
+For probes that look across multiple sources (internal-consistency,
+dataset-audit, code-vs-paper-numbers), open the response with an explicit
+enumeration of asset classes that appear in multiple places. For each
+asset class, list every instance with its location, then flag matches
+vs. disagreements upfront. Then proceed with per-finding detail.
+
+Examples of asset classes worth enumerating before per-finding work:
+shared constants (thresholds, learning rates, sample sizes), regression
+coefficients, prompt templates, dataset-version filenames, model counts,
+formulas, configs that appear in both paper and repo.
+
+Disagreement found in this prelude is itself a finding — don't drop it
+when moving to the per-finding section.
 
 ## Anti-patterns
 
@@ -113,3 +126,9 @@ this code into production" is.
   need apology. State the verdict at the strength the evidence supports.
 - **Don't pad.** A probe that yields one substantive finding is more
   valuable than ten weak ones. If you're stretching to fill a list, stop.
+- **Audit logs are evidence, not ground truth.** When a dataset or
+  benchmark probe asks you to sample, name the specific IDs you sampled,
+  then quote the repo's own audit logs / collision notes / failure-mode
+  taxonomy as the *contradicting* evidence — not as the verdict. The
+  authors' "we audited this and removed bad examples" sections are the
+  *subject* of a dataset audit, not its conclusion.
