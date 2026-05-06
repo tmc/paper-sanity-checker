@@ -35,12 +35,24 @@ For the dataset in question:
    doesn't it? Are some buckets (difficulty, topic, language, time, source
    type) much more represented than others? If the paper claims
    generality, does the dataset support that claim?
-3. **Label correctness.** Sample 10–30 entries from the dataset (favor the
-   hardest / rarest / most-likely-ambiguous slice — that's where errors
-   concentrate). For each, verify the label against an authoritative
-   source where one exists in the corpus (Wikipedia / Wikidata / paper
-   citations / repo metadata). Report the rate of suspect labels and
-   quote a few examples.
+3. **Label correctness.** Sample 10–30 entries from the dataset and
+   verify the label against an authoritative source where one exists in
+   the corpus (paper citations, repo metadata, named external sources).
+   Report the rate of suspect labels and quote a few examples.
+
+   Draw the sample from at least two different slices — labeling errors
+   cluster differently in each:
+   - The hardest / rarest / most-likely-ambiguous slice. Errors at the
+     tail compound with the difficulty signal.
+   - The slice where evaluated systems *underperformed relative to
+     their expected level* (e.g. a system that gets most items right
+     but misses a specific entry). When evaluated systems consistently
+     fail an item that lower-performing systems also fail, that's a
+     mild signal the item itself may be mis-labeled — worth checking.
+
+   When the sample is too small to ground a population-level rate
+   (e.g. you sample 10 of 1000), report the sample rate explicitly
+   ("2/10 ambiguous in this sample") rather than extrapolating.
 4. **Ambiguity and underspecification.** Are there entries where multiple
    answers are reasonable but only one is marked correct? Multiple
    entities sharing a name? Time-dependent answers without a time anchor?

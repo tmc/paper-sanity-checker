@@ -31,6 +31,17 @@ identify:
 5. **Selection check** (where applicable). When the paper reports a single
    number, does the repo or appendix contain the underlying distribution
    the number was selected from? If reported = max(variants), say so.
+6. **Peak-vs-aggregate check.** When the same subject is evaluated under
+   multiple variants (different settings, seeds, prompts, configurations,
+   inference modes, judge versions), how does the paper roll those
+   variants up into the reported number?
+   - **mean** / **median** — averaging exposes variance.
+   - **max** / **best** / **selected variant** — peak-reporting hides
+     variance.
+   If the rollup is a peak, find the variant-level data in the repo and
+   quote the dispersion the headline collapses. A correct number for
+   one variant is still a misleading headline if the dispersion is
+   omitted; flag the omission.
 
 Verdict per choice:
 - **JUSTIFIED & ROBUST** — choice is explained and ablations show the

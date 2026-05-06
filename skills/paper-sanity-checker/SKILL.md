@@ -112,7 +112,15 @@ page. Skip blog mentions, social links, and generic references unless the
 user opts in.
 
 For cited arXiv papers, ask. Default no — papers can cite hundreds, and
-the corpus cap matters more than coverage.
+the corpus cap matters more than coverage. **Exception:** when a
+paper's headline contribution depends on a specific cited claim — e.g.
+"we falsify X", "we extend Y", "this contradicts Z" — that cited work
+is structurally part of the evidence and should be mirrored by default.
+Identify these by reading the abstract and introduction; flag any
+"falsifies" / "extends" / "refutes" / "improves on" claims and propose
+mirroring the corresponding cited paper. Without it, probe 5
+(citation misuse) cannot evaluate whether the cited paper supports the
+claim being attributed to it.
 
 Show the proposed mirror set with reasons next to each item, then **wait
 for the user's selection before proceeding**. Make it easy to override:

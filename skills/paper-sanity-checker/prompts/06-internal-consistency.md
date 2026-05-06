@@ -50,6 +50,19 @@ For paper vs. companion artifacts, additionally check:
    schema, config, or formula appears in multiple files, they should agree.
    Quote any pair that differs and identify which (if any) is canonical.
 
+   Don't rely on noticing duplicates passively — *enumerate* them. For
+   each asset class likely to be duplicated in the repo, run an explicit
+   listing step before judging. The general shape:
+   - Pick an asset class (a kind of thing the paper or pipeline depends
+     on — a templated string, a numeric constant, a config, a formula).
+   - List every file that contains an instance of that class.
+   - If the list has more than one entry, diff the instances.
+   - Any disagreement is a finding.
+
+   Each enumeration produces a list. If the list has length 1, no
+   duplication exists. If length ≥ 2, every pair must agree or the
+   disagreement is a finding.
+
 Output format per finding:
 
 ```

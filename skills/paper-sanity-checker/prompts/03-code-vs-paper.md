@@ -56,6 +56,29 @@ In addition to the matches-vs-claims pass above, run an explicit
    multiple scripts that score model outputs) — when there are several,
    confirm they agree with each other AND with the paper's claim.
 
+In addition to the matches and negations passes, run a **runtime
+failure modes** pass. Reported numbers can shift quietly when the code's
+error paths reclassify failures as legitimate outcomes instead of
+surfacing them.
+
+1. List every place the pipeline depends on something that could fail
+   (external service, file, subprocess, parser, model call). For each,
+   find the error-handling code and quote what is returned on each
+   failure mode (non-2xx, timeout, empty response, parse failure,
+   exception).
+2. Trace what the *next stage* does with that returned value. The
+   question is whether a failure is preserved as a failure or
+   converted into a legitimate-looking output.
+3. Verdict per call site:
+   - **NEUTRAL** — failure raises and halts the pipeline (loud).
+   - **REPORTED** — failure is logged and the affected row is
+     excluded from analysis (accounted for).
+   - **MISCLASSIFIED** — failure silently maps to a legitimate
+     outcome class (a default value, a "no answer" bucket, a zero,
+     a fallback). This is the most damaging — a reproduction under
+     different conditions will produce different headline numbers
+     than the original without anything in the prose changing.
+
 DRIFT means the code implements something close but not identical (e.g.
 different default constant, additional preprocessing step, slightly different
 loss). CONTRADICTED means the code does something materially different from
